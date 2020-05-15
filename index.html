@@ -1,0 +1,189 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+	<title>ogv.js demo/test</title>
+	<link rel="stylesheet" type="text/css" href="demo.css">
+	<link rel="stylesheet" type="text/css" href="iconfont.css">
+
+<body>
+	<div id="wrapper">
+		<div id="header">
+			<h1><a href="https://github.com/brion/ogv.js" target="_blank">ogv.js</a></h1>
+			<h2>decoding Theora and WebM video in JavaScript</h2>
+		</div>
+		<div id="source-info">
+			<div id="source-select-line">
+				<button id=chooser-button>Select...</button>
+				<a id="pagelink" href="javascript:false" target="_blank">...</a>
+			</div>
+			<div>
+				Source:
+				<select height=1 id="video-preferred-size">
+					<option value="360p.vp9.webm">360p WebM VP9</option>
+				</select>
+			</div>
+			<div>
+				Player backend:
+				<select height=1 id="player-backend">
+					<option value="auto" id="auto-select">Auto</option>
+					<option value="js">JavaScript</option>
+					<option value="js-noworker">&nbsp;&nbsp;JS no Worker</option>
+					<option value="js-cpu">&nbsp;&nbsp;JS no WebGL</option>
+					<option value="wasm">Web Assembly</option>
+					<option value="wasm-noworker">&nbsp;&nbsp;WASM no Worker</option>
+					<option value="wasm-cpu">&nbsp;&nbsp;WASM no WebGL</option>
+					<option value="wasm-simd">&nbsp;&nbsp;WASM with SIMD</option>
+					<option value="wasm-mt">&nbsp;&nbsp;WASM threaded</option>
+					<option value="wasm-simd-mt">&nbsp;&nbsp;WASM SIMD+threads</option>
+					<option value="wasm-video">&nbsp;&nbsp;WASM &lt;video&gt;</option>
+					<option value="native">native</option>
+				</select>
+			</div>
+			<div>
+				Playback Rate:
+				<input type="range" min=10 max=200 value=100 height=1 id="pbr-slider"/>
+				<button id="pbr-reset" height=1>Reset</button>
+			</div>
+		</div>
+
+		<div id="player-aspect">
+			<div id="player" class="ogvjs-player">
+				<div id="spinner-panel"></div>
+				<div id="control-panel">
+					<div id="controls">
+						<button class="play" title="Play"><span class="icon-play"></span></button>
+						<button class="pause" title="Pause" style="display:none"><span class="icon-pause"></span></button>
+						<button class="mute" title="Mute"><span class="icon-volume-up"></span></button>
+						<button class="unmute" title="Unmute" style="display:none"><span class="icon-volume-off"></span></button>
+						<div class="time-elapsed"></div>
+						<div class="progress">
+							<div id="progress-total">
+								<div id="progress-buffered"></div>
+								<div id="progress-processed"></div>
+								<div id="progress-played"></div>
+							</div>
+							<div id="progress-thumb"></div>
+						</div>
+						<div class="time-remaining"></div>
+						<button class="fullscreen" title="Fullscreen"><span class="icon-resize-full"></span></button>
+						<button class="unzoom" title="Unzoom" style="display:none"><span class="icon-resize-small"></span></button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div id="metadata">
+
+			<table id="info">
+				<tr>
+					<td>
+						<div>
+							Video
+							<span id="video-fps"></span>fps
+							<span id="video-pic-width"></span>x<span id="video-pic-height"></span>
+							(<span id="video-late">0</span> dropped, <span id="video-jitter">0</span>ms jitter)
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td>
+						<div>
+							Audio
+							<span id="audio-rate">n/a</span> Hz,
+							<span id="audio-channels">n/a</span> ch
+							(<span id="audio-drops">0</span> drops,
+							 <span id="audio-delayed">0</span>s acc. delay)
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td>
+						<div>
+							Bitrate:
+							video <span id="video-bitrate">0</span> kbps,
+							audio <span id="audio-bitrate">0</span> kbps
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td id="decode-rate">
+						<table id="decode-rate-table">
+							<tr>
+								<td class="bench-target">tget</td>
+								<td class="bench-clock">clck</td>
+								<td class="bench-video">vid</td>
+								<td class="bench-audio">aud</td>
+								<td class="bench-total">cpu</td>
+								<td class="bench-demux">(mux</td>
+								<td class="bench-buffer">buf</td>
+								<td class="bench-draw">drw</td>
+								<td class="bench-proxy">prx)</td>
+							</tr>
+							<tr>
+								<td id="bench-target" class="bench-target">-</td>
+								<td id="bench-clock" class="bench-clock">-</td>
+								<td id="bench-video" class="bench-video">-</td>
+								<td id="bench-audio" class="bench-audio">-</td>
+								<td id="bench-total" class="bench-total">-</td>
+								<td id="bench-demux" class="bench-demux">-</td>
+								<td id="bench-buffer" class="bench-buffer">-</td>
+								<td id="bench-draw" class="bench-draw">-</td>
+								<td id="bench-proxy" class="bench-proxy">-</td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+				<tr>
+					<td><span id="status-view"></span></td>
+				</tr>
+			</table>
+
+			<div id="benchmark-container">
+				<canvas id="benchmark" width=500 height=200></canvas>
+				<div id="benchmark-legend">
+					<ul id="benchmark-upper">
+						<li style="color:darkviolet">dropped frame delay
+						<li style="color:blue">frame delay
+						<li style="color:red">frame rate target
+					</ul>
+					<ul id="benchmark-lower">
+						<li style="color:darkcyan">video decode time
+						<li style="color:green">audio decode time
+						<li style="color:#222">main thread time
+					</ul>
+				</div>
+			</div>
+		</div>
+
+		<div id="media-chooser-stub">
+			<!-- lightbox-style click-to-dismiss background -->
+		</div>
+		<div id="media-chooser">
+			<div id=media-source-block>
+				<select id=media-source>
+					<option value=clean>Demo set (Theora/VP8/VP9)</option>
+					<option value=av1>AV1 demos</option>
+					<option value=motd>Wikimedia Commons Media of the Day</option>
+					<option value=commons>Wikimedia Commons all videos</option>
+					<option value=commons-audio>Wikimedia Commons all audio</option>
+				</select>
+			</div>
+			<form id="searchform">
+				<input id=filter placeholder="Search media">
+			</form>
+			<div id="media-list">
+				<!-- ... -->
+			</div>
+		</div>
+
+	</div>
+
+	<script src="lib/ogv-es2017.js?version=1.7.0-20200515200534-6c518d8" module></script>
+	<script src="lib/ogv.js?version=1.7.0-20200515200534-6c518d8" nomodule></script>
+	<script src="demo.js?version=1.7.0-20200515200534-6c518d8"></script>
+
+</body>
+
+</html>
